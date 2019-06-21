@@ -1,0 +1,1 @@
+.[] | select(.configs) | . += { type: "config" }

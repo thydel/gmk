@@ -1,0 +1,29 @@
+#!/usr/bin/make -f
+
+MAKEFLAGS += -Rr --warn-undefined-variables
+SHELL != which bash
+
+.DELETE_ON_ERROR:
+.DEFAULT_GOAL := main
+
+tmp := .mk
+self := $(lastword $(MAKEFILE_LIST))
+file ?= jmk
+
+dirs := $(tmp)
+stones := $(dirs:%=%/.stone)
+$(self): $(stones)
+%/.stone:; mkdir -p $(@D); touch $@
+
+yml2js.py := import sys, yaml, json;
+yml2js.py += json.dump(yaml.load(sys.stdin), sys.stdout, indent=2, default=str, sort_keys=True)
+
+yml2js := python -c '$(yml2js.py)'
+
+out := $(tmp)/$(file)
+
+$(out).js: $(file).yml $(self); @ < $< $(yml2js) > $@
+
+$(out).mk: types.jq mk.jq
+$(out).mk: $(out).js; < $< jq -f types.jq | jq -f mk.jq -r $(and ,> $@)
+main: $(out).mk

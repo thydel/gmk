@@ -1,0 +1,61 @@
+#!/usr/bin/make -f
+
+MAKEFLAGS += -Rr --warn-undefined-variables
+SHELL != which bash
+
+.DELETE_ON_ERROR:
+
+git.test != git rev-parse --is-inside-work-tree > /dev/null 2>&1 && date
+. := $(or $(git.test),$(error not in a git dir))
+git.dir != git rev-parse --git-dir
+git.exclude := $(git.dir)/info/exclude
+
+tmp := .gmk
+self := $(lastword $(MAKEFILE_LIST))
+file ?= gmk
+
+adam := $(tmp)/.adam
+ultimo := /proc/self
+$(ultimo):;
+$(adam):; touch -d @0 $@
+old-or-young := && echo $(adam) || echo $(ultimo)
+lineinfile = $(eval $2:: $(shell grep -q '$1' $2 $(old-or-young)); echo '$1' >> $$@)
+
+dirs := $(tmp)
+stones := $(dirs:%=%/.stone)
+$(self): $(stones) $(adam)
+%/.stone:; mkdir -p $(@D); touch $@
+$(call lineinfile,$(tmp),$(git.exclude))
+
+$(self): $(tmp)/$(file).mk $(tmp)/config.mk;
+include $(tmp)/$(file).mk
+include $(tmp)/config.mk
+
+yml2js.py := import sys, yaml, json;
+yml2js.py += json.dump(yaml.load(sys.stdin), sys.stdout, indent=2, default=str, sort_keys=True)
+
+yml2js := python -c '$(yml2js.py)'
+
+$(tmp)/$(file).js: $(file).yml $(stones); @ < $< $(yml2js) > $@
+
+$(tmp)/config.mk: types.jq config.jq
+$(tmp)/config.mk: $(tmp)/$(file).js; < $< jq -f types.jq | jq -f config.jq -r > $@
+config: $(tmp)/config.mk
+
+$(tmp)/$(file).mk: types.jq git.jq
+$(tmp)/$(file).mk: $(tmp)/$(file).js; < $< jq -f types.jq | jq -f git.jq -r > $@
+git: $(tmp)/$(file).mk
+
+
+do.conf = $(foreach _, $($*.config), git -C $($*.dir)/$* config --add $_ "$$(git config --get --local $_)";)
+do.ssh = git -C $($*.dir)/$* config --add core.sshCommand "$(call ssh,$*)"
+%/do.conf %/do.ssh: dir = $(if $($*.dir),$($*.dir)/$*,$*)
+%/do.conf %/do.ssh:; $($(@F))
+
+$(foreach _, $(repos), $(call lineinfile,$($_.dir)/$_/,$(git.exclude)))
+exclude: $(git.exclude)
+
+
+#.DEFAULT_GOAL := main
+#.PHONY: main
+#.DEFAULT:; @:
