@@ -24,6 +24,6 @@ out := $(tmp)/$(file)
 
 $(out).js: $(file).yml $(self); @ < $< $(yml2js) > $@
 
-$(out).mk: types.jq mk.jq
-$(out).mk: $(out).js; < $< jq -f types.jq | jq -f mk.jq -r > $@
+$(out).mk: types.jq default.jq mk.jq
+$(out).mk: $(out).js; < $< jq -f types.jq | jq -f default.jq | jq -f mk.jq -r > $@
 main: $(out).mk
