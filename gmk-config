@@ -64,7 +64,7 @@ pull: $(git.items:%=%/pull)
 
 .SECONDEXPANSION:
 
-$(git.items:%=%/key): %/key: % $$(shell git -C $$(git.$$*.name) config core.sshCommand > /dev/null || echo $$*/do_key)
+$(git.items:%=%/key): %/key: % $$(shell test -d $$(git.$$*.name) && git -C $$(git.$$*.name) config core.sshCommand > /dev/null || echo $$*/do_key)
 $(git.items:%=%/do_key): %/do_key:; git -C $(git.$*.name) config --add core.sshCommand "ssh -i ~/.ssh/$(git.$*.key) -F /dev/null"
 
 
