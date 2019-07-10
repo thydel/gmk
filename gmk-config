@@ -36,6 +36,8 @@ yml2js.py += json.dump(yaml.load(sys.stdin), sys.stdout, indent=2, default=str, 
 
 yml2js := python -c '$(yml2js.py)'
 
+$(file).yml types.jq config.jq git.jq:;
+
 $(tmp)/$(file).js: $(file).yml $(stones); @ < $< $(yml2js) > $@
 
 $(tmp)/config.mk: types.jq config.jq
@@ -49,8 +51,22 @@ git: $(tmp)/$(file).mk
 
 do.conf = $(foreach _, $($*.config), git -C $($*.dir)/$* config --add $_ "$$(git config --get --local $_)";)
 do.ssh = git -C $($*.dir)/$* config --add core.sshCommand "$(call ssh,$*)"
-%/do.conf %/do.ssh: dir = $(if $($*.dir),$($*.dir)/$*,$*)
+%/do.conf %/do.ssh %/foo: dir = $(if $($*.dir),$($*.dir)/$*,$*)
 %/do.conf %/do.ssh:; $($(@F))
+%/foo:; echo $(dir)
+
+$(git.items:%=%/clone): %/clone: %
+$(git.items):; GIT_SSH_COMMAND='ssh -i ~/.ssh/$(git.$@.key)' git clone -b $(git.$@.version) $(git.$@.git) $@
+
+$(git.items:%=%/pull): %/pull: %/key; git -C $(git.$*.name) $(@F)
+pull: $(git.items:%=%/pull)
+.PHONY: pull
+
+.SECONDEXPANSION:
+
+$(git.items:%=%/key): %/key: % $$(shell git -C $$(git.$$*.name) config core.sshCommand > /dev/null || echo $$*/do_key)
+$(git.items:%=%/do_key): %/do_key:; git -C $(git.$*.name) config --add core.sshCommand "ssh -i ~/.ssh/$(git.$*.key) -F /dev/null"
+
 
 $(foreach _, $(repos), $(call lineinfile,$($_.dir)/$_/,$(git.exclude)))
 exclude: $(git.exclude)
