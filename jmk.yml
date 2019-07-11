@@ -20,8 +20,10 @@
 - git: git@github.com:Epiconcept-Paris/infra-data-misc.git
   name: data-misc
   key: *thyepi
+  conf: thyepi
 
 - git: git@github.com:thydel/ar-hg-etc-com.git
   key: *thydel
   name: hg-etc-com
   version: use-module
+  conf: thydel
