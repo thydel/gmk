@@ -29,7 +29,7 @@
 - git: git@github.com:thydel/infra-ips.git
   name: ips
   conf: thydel
-  links: ../data-ips/oxa ../data-misc
+  links: data-ips data-misc
 
 - git: git@github.com:Epiconcept-Paris/infra-data-inventories.git
   name: inventories
