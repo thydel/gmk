@@ -25,6 +25,8 @@ lineinfile = $(eval $2:: $(shell grep -q '$1' $2 $(old-or-young)); echo '$1' >> 
 
 dirs := $(tmp) $(ext)
 stones := $(dirs:%=%/.stone)
+stones: $(stones)
+.PHONY: stones
 $(self): $(stones) $(adam)
 %/.stone:; mkdir -p $(@D); touch $@
 $(call lineinfile,$(tmp),$(git.exclude))
@@ -52,8 +54,10 @@ main:; @echo $(git.items)
 
 gitkey = $(config.$(git.$1.conf).key)
 
+ifneq ($(ext),.)
 $(git.items): % : $(ext)/%
 .PHONY: $(git.items)
+endif
 $(git.items:%=%/clone): %/clone: $(ext)/%
 gitdirs := $(git.items:%=$(ext)/%)
 $(gitdirs): ssh = GIT_SSH_COMMAND='ssh -i ~/.ssh/$(call gitkey,$(@F))'
