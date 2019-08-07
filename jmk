@@ -94,7 +94,7 @@ endef
 		$(config.$(git.$(repo).conf).configs.items), \
 		$(eval $(call config,$(repo),$(conf)))))
 
-, := $(foreach repo, $(git.items), $(eval $(repo)/conf: $(repo)/clone $($(repo)_conf)))
+. := $(foreach repo, $(git.items), $(eval $(repo)/conf: $(repo)/clone $($(repo)_conf)))
 
 conf := $(git.items:%=%/conf)
 conf: $(conf)
