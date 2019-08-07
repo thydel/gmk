@@ -17,6 +17,22 @@
     <<: *thy
     user.email: *thyepi
 
+- alias: thyepi
+  email: *thyepi
+  full: &tde Thierry Delamare
+
+- alias: thydel
+  email: *thydel
+  full: *tde
+
+- alias: evens
+  email: e.solignac@epiconcept.fr
+  full: Evens Solignac
+
+- alias: cedric
+  email: c.girard@epiconcept.fr
+  full: Cédric Girard
+
 - git: git@github.com:Epiconcept-Paris/infra-data-misc.git
   name: data-misc
   conf: thyepi
@@ -39,3 +55,4 @@
   name: hg-etc-com
   version: use-module
   conf: thydel
+

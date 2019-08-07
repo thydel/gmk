@@ -21,16 +21,19 @@ ultimo := /proc/self
 $(ultimo):;
 $(adam):; touch -d @0 $@
 old-or-young := && echo $(adam) || echo $(ultimo)
-lineinfile = $(eval $2:: $(shell grep -q '$1' $2 $(old-or-young)); echo '$1' >> $$@)
+lineinfile = $(eval $2:: $(shell grep -q '^$1$$' $2 $(old-or-young)); echo '$1' >> $$@)
 
 dirs := $(tmp) $(ext)
 stones := $(dirs:%=%/.stone)
+mailmap := .mailmap
 stones: $(stones)
 .PHONY: stones
-$(self): $(stones) $(adam)
+$(self): $(stones) $(adam) do-mailmap
 %/.stone:; mkdir -p $(@D); touch $@
-$(call lineinfile,$(tmp),$(git.exclude))
-$(call lineinfile,$(ext),$(git.exclude))
+do-mailmap: $(shell test -f $(mailmap) || touch $(mailmap))
+.PHONY: do-mailmap
+excluded := $(tmp) $(ext) $(mailmap)
+$(foreach _,$(excluded),$(call lineinfile,$_,$(git.exclude)))
 
 -include $(tmp)/$(file).mk
 
@@ -99,6 +102,22 @@ endef
 conf := $(git.items:%=%/conf)
 conf: $(conf)
 .PHONY: conf $(conf)
+
+define mailmap.line
+$1 <$(alias.$1.email)> $(alias.$1.full)
+endef
+
+. := $(foreach alias, $(alias.items), $(call lineinfile,$(call mailmap.line,$(alias)),$(mailmap)))
+
+mailmap: $(mailmap)
+.PHONY: mailmap
+
+$(foreach repo, $(git.items), $(call lineinfile,$(mailmap),$(ext)/$(repo)/.git/info/exclude))
+
+mailmaps := $(git.items:%=$(ext)/%/$(mailmap))
+$(mailmaps): $(mailmap); cp -p $< $@
+mailmaps: conf $(mailmaps) $(git.items:%=$(ext)/%/.git/info/exclude)
+.PHONY: mailmaps
 
 exclude: $(git.exclude)
 
