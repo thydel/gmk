@@ -11,10 +11,10 @@ git.test != git rev-parse --is-inside-work-tree > /dev/null 2>&1 && date
 git.dir != git rev-parse --git-dir
 git.exclude := $(git.dir)/info/exclude
 
-tmp := .mk
+tmp := .gmk
 ext ?= ext
 self := $(lastword $(MAKEFILE_LIST))
-file ?= jmk
+file ?= gmk
 
 adam := $(tmp)/.adam
 ultimo := /proc/self
