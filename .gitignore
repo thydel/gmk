@@ -3,3 +3,4 @@
 .mk
 try.jq
 \#$gmk#
+.hide

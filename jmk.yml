@@ -19,11 +19,23 @@
 
 - git: git@github.com:Epiconcept-Paris/infra-data-misc.git
   name: data-misc
-  key: *thyepi
+  conf: thyepi
+
+- git: git@github.com:Epiconcept-Paris/infra-data-ips.git
+  name: data-ips
+  version: tde
+  conf: thyepi
+
+- git: git@github.com:thydel/infra-ips.git
+  name: ips
+  conf: thydel
+  links: data-ips data-misc
+
+- git: git@github.com:Epiconcept-Paris/infra-data-inventories.git
+  name: inventories
   conf: thyepi
 
 - git: git@github.com:thydel/ar-hg-etc-com.git
-  key: *thydel
   name: hg-etc-com
   version: use-module
   conf: thydel
