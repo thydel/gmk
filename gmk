@@ -11,10 +11,11 @@ git.test != git rev-parse --is-inside-work-tree > /dev/null 2>&1 && date
 git.dir != git rev-parse --git-dir
 git.exclude := $(git.dir)/info/exclude
 
-tmp := .gmk
+id := gmk
+tmp := .$(id)
 ext ?= ext
 self := $(lastword $(MAKEFILE_LIST))
-file ?= gmk
+file ?= $(id)
 
 adam := $(tmp)/.adam
 ultimo := /proc/self
@@ -48,8 +49,18 @@ out := $(tmp)/$(file)
 
 $(out).js: $(file).yml $(self); @ < $< $(yml2js) > $@
 
-$(out).mk: types.jq default.jq mk.jq
-$(out).mk: $(out).js; < $< jq -f types.jq | jq -f default.jq | jq -f mk.jq -r > $@
+ifeq ($(dir $(self)),./)
+lib := .
+else
+local := /usr/local
+lib := $(local)/lib/$(id)
+endif
+
+jqs := types default mk
+$(foreach jq,$(jqs),$(eval $(jq).jq := $(lib)/$(jq).jq))
+
+$(out).mk: $(types.jq) $(default.jq) $(mk.jq)
+$(out).mk: $(out).js; < $< jq -f $(types.jq) | jq -f $(default.jq) | jq -f $(mk.jq) -r > $@
 
 main:; @echo $(git.items)
 .PHONY: main
@@ -123,3 +134,24 @@ exclude: $(git.exclude)
 
 clean:; rm $(out).js
 .PHONY: clean
+
+ifdef NEVER
+local := /usr/local
+bin   := $(local)/bin
+etc   := $(local)/etc/$(id)
+lib   := $(local)/lib/$(id)
+
+cmds := $(id)
+jqs  := types default mk
+libs := $(jqs:%=%.jq)
+
+bin.files := $(cmds:%=$(bin)/%)
+etc.files := $(etcs:%=$(etc)/%)
+lib.files := $(libs:%=$(lib)/%)
+files := $(bin.files) $(etc.files) $(lib.files)
+
+$(etc)/% $(lib)/% $(bin)/%: %; install $< $@
+
+install: $(files);
+.PHONY: install
+endif
