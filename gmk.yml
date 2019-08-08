@@ -20,6 +20,11 @@
 - { hub: thydel, token: github/tokens/thydel/hub }
 - { hub: thyepi, token: github/tokens/thyepi/hub }
 
+- type: self
+  name: gmk
+  env: thydel
+  desc: make git set
+
 - alias: thyepi
   email: *thyepi
   full: &tde Thierry Delamare

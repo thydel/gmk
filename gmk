@@ -164,3 +164,7 @@ $(foreach _, $(hub.items), $(eval $(call hub,$_)))
 hubs := $(hub.items:%=$(tmp)/%.hub)
 hub: $(hubs); @$(foreach _, $(hub.items), echo env HUB_CONFIG=$(tmp)/$_.hub;)
 .PHONY: hub
+
+self/create := env HUB_CONFIG=$(tmp)/$(self.env).hub
+self/create += create $(and $(self.private),-p) $(and $(self.desc),-d "$(self.desc)")
+self/create:; @echo $(strip $($@))
