@@ -165,6 +165,7 @@ hubs := $(hub.items:%=$(tmp)/%.hub)
 hub: $(hubs); @$(foreach _, $(hub.items), echo env HUB_CONFIG=$(tmp)/$_.hub;)
 .PHONY: hub
 
+quote = $(subst ",\\\",$1)#"
 self/create := env HUB_CONFIG=$(tmp)/$(self.env).hub
-self/create += create $(and $(self.private),-p) $(and $(self.desc),-d "$(self.desc)")
+self/create += hub create $(and $(self.private),-p) $(and $(self.desc),-d \"$(call quote,$(self.desc))\")
 self/create:; @echo $(strip $($@))
