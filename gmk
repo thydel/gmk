@@ -22,7 +22,7 @@ ultimo := /proc/self
 $(ultimo):;
 $(adam):; touch -d @0 $@
 old-or-young := && echo $(adam) || echo $(ultimo)
-lineinfile = $(eval $2:: $(shell grep -q '^$1$$' $2 $(old-or-young)); echo '$1' >> $$@)
+lineinfile = $(eval $2:: $(shell test -f $2 && grep -q '^$1$$' $2 $(old-or-young)); echo '$1' >> $$@)
 
 dirs := $(tmp) $(ext)
 stones := $(dirs:%=%/.stone)
@@ -35,6 +35,8 @@ do-mailmap: $(shell test -f $(mailmap) || touch $(mailmap))
 .PHONY: do-mailmap
 excluded := $(tmp) $(ext) $(mailmap)
 $(foreach _,$(excluded),$(call lineinfile,$_,$(git.exclude)))
+
+$(or $(wildcard $(file).yml),$(error no $(file).yml))
 
 -include $(tmp)/$(file).mk
 
@@ -155,3 +157,10 @@ exclude: $(git.exclude)
 
 clean:; rm $(out).js
 .PHONY: clean
+
+hub.config = github.com: [ { user: $1, oauth_token: $(shell pass $(hub.$1.token)), protocol: https } ]
+hub = $(tmp)/$1.hub:; @echo '$(call hub.config,$1)' > $$@
+$(foreach _, $(hub.items), $(eval $(call hub,$_)))
+hubs := $(hub.items:%=$(tmp)/%.hub)
+hub: $(hubs); @$(foreach _, $(hub.items), echo env HUB_CONFIG=$(tmp)/$_.hub;)
+.PHONY: hub

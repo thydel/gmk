@@ -17,6 +17,9 @@
     <<: *thy
     user.email: *thyepi
 
+- { hub: thydel, token: github/tokens/thydel/hub }
+- { hub: thyepi, token: github/tokens/thyepi/hub }
+
 - alias: thyepi
   email: *thyepi
   full: &tde Thierry Delamare
@@ -56,3 +59,6 @@
   version: use-module
   conf: thydel
 
+- git: git@github.com:Epiconcept-Paris/infra-password-store.git
+  name: password-store
+  conf: thyepi
