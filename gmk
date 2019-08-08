@@ -36,7 +36,7 @@ do-mailmap: $(shell test -f $(mailmap) || touch $(mailmap))
 excluded := $(tmp) $(ext) $(mailmap)
 $(foreach _,$(excluded),$(call lineinfile,$_,$(git.exclude)))
 
-$(or $(wildcard $(file).yml),$(error no $(file).yml))
+. := $(or $(wildcard $(file).yml),$(error no $(file).yml))
 
 -include $(tmp)/$(file).mk
 
