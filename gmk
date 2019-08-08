@@ -49,17 +49,38 @@ out := $(tmp)/$(file)
 
 $(out).js: $(file).yml $(self); @ < $< $(yml2js) > $@
 
-ifeq ($(dir $(self)),./)
-lib := .
-else
 local := /usr/local
-lib := $(local)/lib/$(id)
+bin := $(local)/bin
+etc := $(local)/etc/$(id)
+lib.installed := $(local)/lib/$(id)
+lib.here := .
+
+ifeq ($(dir $(self)),./)
+lib := $(lib.here)
+else
+lib := $(lib.installed)
 endif
 
 jqs := types default mk
 $(foreach jq,$(jqs),$(eval $(jq).jq := $(lib)/$(jq).jq))
+$(eval jqs.jq := $(jqs:%=$$(%.jq)))
 
-$(out).mk: $(types.jq) $(default.jq) $(mk.jq)
+ifeq ($(dir $(self)),./)
+cmds := $(id)
+libs := $(jqs:%=%.jq)
+etcs :=
+bin.files := $(cmds:%=$(bin)/%)
+etc.files := $(etcs:%=$(etc)/%)
+lib.files := $(libs:%=$(lib.installed)/%)
+files := $(bin.files) $(etc.files) $(lib.files)
+install = install $< $@
+$(bin)/%: %; $(install)
+$(lib.files): $(lib.installed)/% : %; $(install)
+install: $(lib.installed)/.stone $(files);
+.PHONY: install
+endif
+
+$(out).mk: $(jqs.jq)
 $(out).mk: $(out).js; < $< jq -f $(types.jq) | jq -f $(default.jq) | jq -f $(mk.jq) -r > $@
 
 main:; @echo $(git.items)
@@ -134,24 +155,3 @@ exclude: $(git.exclude)
 
 clean:; rm $(out).js
 .PHONY: clean
-
-ifdef NEVER
-local := /usr/local
-bin   := $(local)/bin
-etc   := $(local)/etc/$(id)
-lib   := $(local)/lib/$(id)
-
-cmds := $(id)
-jqs  := types default mk
-libs := $(jqs:%=%.jq)
-
-bin.files := $(cmds:%=$(bin)/%)
-etc.files := $(etcs:%=$(etc)/%)
-lib.files := $(libs:%=$(lib)/%)
-files := $(bin.files) $(etc.files) $(lib.files)
-
-$(etc)/% $(lib)/% $(bin)/%: %; install $< $@
-
-install: $(files);
-.PHONY: install
-endif
