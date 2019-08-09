@@ -85,7 +85,7 @@ endif
 $(out).mk: $(jqs.jq)
 $(out).mk: $(out).js; < $< jq -f $(types.jq) | jq -f $(default.jq) | jq -f $(mk.jq) -r > $@
 
-main:; @echo $(git.items)
+main:; @echo $(if $(filter undefined, $(origin git.items)),no git items,$(git.items))
 .PHONY: main
 
 gitkey = $(config.$(git.$1.conf).key)
@@ -172,3 +172,16 @@ $~: desc := $(and $(self.desc),-d \"$(call quote,$(self.desc))\")
 $~: create := $(hub) create $(and $(self.private),-p) $(desc)
 $~: delete := $(hub) delete $(self.name)
 $~:; @echo $(strip $($(@F)))
+
+
+define self_config
+$0_$1.dep += git config --local $1 > /dev/null || echo $0_$1/do_conf
+$0_$1.cmd  = git config --add $1 "$(config.$(self.env).configs.$1)"
+$0_$1/conf: $$(shell $$($0_$1.dep))
+$0_$1/do_conf:; $$($0_$1.cmd)
+$0_conf += $0_$1/conf
+.PHONY: $0_$1/conf $0_$1/do_conf
+endef
+
+$(foreach _,$(config.$(self.env).configs.items),$(eval $(call self_config,$_)))
+self/config: $(self_config_conf)
