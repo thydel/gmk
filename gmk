@@ -105,9 +105,13 @@ $(gitdirs):; $(ssh) git clone -b $(git.$(@F).version) $(git.$(@F).git) $(ext)/$(
 clone: $(gitdirs)
 .PHONY: clone 
 
-$(git.items:%=%/pull): %/pull: %/conf; git -C $(ext)/$* $(@F)
-pull: $(git.items:%=%/pull)
-.PHONY: pull
+define git.cmd
+$(git.items:%=%/$1): %/$1: %/conf; git -C $(ext)/$$* $$(@F)
+$1: $(git.items:%=%/$1)
+.PHONY: $1
+endef
+
+$(foreach cmd, status fetch pull, $(eval $(call git.cmd,$(cmd))))
 
 define core.sshCommand
 config.$1.configs.$0 := ssh -i ~/.ssh/$(config.$1.key) -F /dev/null
