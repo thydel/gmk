@@ -111,15 +111,15 @@ $1: $(git.items:%=%/$1)
 .PHONY: $1
 endef
 
-git.cmds := status fetch
+git.cmds := status fetch pull
 $(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
 
-define git.pull
-$1/pull: $1/conf $(shell test -d $(ext)/$1 && git -C $(ext)/$1 log -1 HEAD..@{upstream} | ifne echo $1/do_pull)
+define git.pull?
+$1/pull?: $1/conf $(shell test -d $(ext)/$1 && git -C $(ext)/$1 log -1 HEAD..@{upstream} | ifne echo $1/do_pull)
 $1/do_pull:; git -C $(ext)/$1 pull
 endef
-pull: $(git.items:%=%/pull); @echo gmk fetch
-.PHONY: pull
+pull?: $(git.items:%=%/pull?)
+.PHONY: pull?
 
 DRY ?= -n
 define git.push
@@ -129,7 +129,7 @@ endef
 push: $(git.items:%=%/push)
 .PHONY: push
 
-$(foreach cmd, pull push, $(foreach item, $(git.items), $(eval $(call git.$(cmd),$(item)))))
+$(foreach cmd, pull? push, $(foreach item, $(git.items), $(eval $(call git.$(cmd),$(item)))))
 
 define core.sshCommand
 config.$1.configs.$0 := ssh -i ~/.ssh/$(config.$1.key) -F /dev/null
