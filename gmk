@@ -179,7 +179,7 @@ $~: delete := $(hub) delete $(self.name)
 $~:; @echo $(strip $($(@F)))
 
 self/remote: $(if $(filter $(shell git remote get-url origin),$(self.remote)),,self/do_remote)
-self/do_remote:; git remote set-url $(self.remote) origin
+self/do_remote:; git remote set-url origin $(self.remote)
 
 define self_config
 $0_$1.dep += git config --local $1 > /dev/null || echo $0_$1/do_conf
