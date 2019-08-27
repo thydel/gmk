@@ -111,8 +111,17 @@ $1: $(git.items:%=%/$1)
 .PHONY: $1
 endef
 
-git.cmds := status fetch pull push
+git.cmds := status fetch pull
 $(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
+
+define git.push
+$1/push: $1/conf $$(shell git -C $(ext)/$1 diff --quiet @{upstream} || echo $1/do_push)
+$1/do_push:; git -C $(ext)/$1 push -n
+endef
+push: $(git.items:%=%/push)
+.PHONY: push
+
+$(foreach item, $(git.items), $(eval $(call git.push,$(item))))
 
 define core.sshCommand
 config.$1.configs.$0 := ssh -i ~/.ssh/$(config.$1.key) -F /dev/null
