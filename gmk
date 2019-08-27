@@ -116,7 +116,7 @@ $(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
 
 DRY ?= -n
 define git.push
-$1/push: $1/conf $$(shell git -C $(ext)/$1 diff --quiet @{upstream} || echo $1/do_push)
+$1/push: $1/conf $$(test -d $(ext)/$1 && shell git -C $(ext)/$1 diff --quiet @{upstream} || echo $1/do_push)
 $1/do_push:; git -C $(ext)/$1 push $(DRY)
 endef
 push: $(git.items:%=%/push)
