@@ -1,0 +1,216 @@
+#!/usr/bin/make -f
+
+MAKEFLAGS += -Rr --warn-undefined-variables
+SHELL != which bash
+.DEFAULT_GOAL :=  main
+
+.DELETE_ON_ERROR:
+
+git.test != git rev-parse --is-inside-work-tree > /dev/null 2>&1 && date
+. := $(or $(git.test),$(error not in a git dir))
+git.dir != git rev-parse --git-dir
+git.exclude := $(git.dir)/info/exclude
+
+id := gmk
+tmp := .$(id)
+ext ?= ext
+self := $(lastword $(MAKEFILE_LIST))
+file ?= $(id)
+
+adam := $(tmp)/.adam
+ultimo := /proc/self
+$(ultimo):;
+$(adam):; touch -d @0 $@
+old-or-young := && echo $(adam) || echo $(ultimo)
+lineinfile = $(eval $2:: $(shell test -f $2 && grep -q '^$1$$' $2 $(old-or-young)); echo '$1' >> $$@)
+
+dirs := $(tmp) $(ext)
+stones := $(dirs:%=%/.stone)
+mailmap := .mailmap
+stones: $(stones)
+.PHONY: stones
+$(self): $(stones) $(adam) do-mailmap
+%/.stone:; mkdir -p $(@D); touch $@
+do-mailmap: $(shell test -f $(mailmap) || touch $(mailmap))
+.PHONY: do-mailmap
+excluded := $(tmp) $(ext) $(mailmap)
+$(foreach _,$(excluded),$(call lineinfile,$_,$(git.exclude)))
+
+. := $(or $(wildcard $(file).yml),$(error no $(file).yml))
+
+-include $(tmp)/$(file).mk
+
+yml2js.py := import sys, yaml, json;
+yml2js.py += json.dump(yaml.load(sys.stdin), sys.stdout, indent=2, default=str, sort_keys=True)
+
+yml2js := python -c '$(yml2js.py)'
+
+$(file).yml types.jq config.jq git.jq:;
+
+out := $(tmp)/$(file)
+
+$(out).js: $(file).yml $(self); @ < $< $(yml2js) > $@
+
+local := /usr/local
+bin := $(local)/bin
+etc := $(local)/etc/$(id)
+lib.installed := $(local)/lib/$(id)
+lib.here := .
+
+ifeq ($(dir $(self)),./)
+lib := $(lib.here)
+else
+lib := $(lib.installed)
+endif
+
+jqs := types default mk
+$(foreach jq,$(jqs),$(eval $(jq).jq := $(lib)/$(jq).jq))
+$(eval jqs.jq := $(jqs:%=$$(%.jq)))
+
+ifeq ($(dir $(self)),./)
+cmds := $(id)
+libs := $(jqs:%=%.jq)
+etcs :=
+bin.files := $(cmds:%=$(bin)/%)
+etc.files := $(etcs:%=$(etc)/%)
+lib.files := $(libs:%=$(lib.installed)/%)
+files := $(bin.files) $(etc.files) $(lib.files)
+install = install $< $@
+$(bin)/%: %; $(install)
+$(lib.files): $(lib.installed)/% : %; $(install)
+install: $(lib.installed)/.stone $(files);
+.PHONY: install
+endif
+
+$(out).mk: $(jqs.jq)
+$(out).mk: $(out).js; < $< jq -f $(types.jq) | jq -f $(default.jq) | jq -f $(mk.jq) -r > $@
+
+init: hub;
+.PHONY: init
+
+main:; @echo $(if $(filter undefined, $(origin git.items)),no git items,$(git.items))
+.PHONY: main
+
+gitkey = $(config.$(git.$1.conf).key)
+
+ifeq ($(ext),.)
+$(foreach item, $(git.items), $(call lineinfile,$(item),$(git.exclude)))
+endif
+
+ifneq ($(ext),.)
+$(git.items): % : $(ext)/%
+.PHONY: $(git.items)
+endif
+$(git.items:%=%/clone): %/clone: $(ext)/%
+gitdirs := $(git.items:%=$(ext)/%)
+$(gitdirs): ssh = GIT_SSH_COMMAND='ssh -i ~/.ssh/$(call gitkey,$(@F))'
+$(gitdirs):; $(ssh) git clone -b $(git.$(@F).version) $(git.$(@F).git) $(ext)/$(@F)
+clone: $(gitdirs)
+.PHONY: clone 
+
+define git.cmd
+$(git.items:%=%/$1): %/$1: %/conf; git -C $(ext)/$$* $$(@F)
+$1: $(git.items:%=%/$1)
+.PHONY: $1
+endef
+
+git.cmds := status fetch pull
+$(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
+
+define git.pull?
+$1/pull?: $1/conf $(shell test -d $(ext)/$1 && git -C $(ext)/$1 log -1 HEAD..@{upstream} | ifne echo $1/do_pull)
+$1/do_pull:; git -C $(ext)/$1 pull
+endef
+pull?: $(git.items:%=%/pull?)
+.PHONY: pull?
+
+DRY ?= -n
+define git.push
+$1/push: $1/conf $(shell test -d $(ext)/$1 && (git -C $(ext)/$1 diff --quiet @{upstream} || echo $1/do_push))
+$1/do_push:; git -C $(ext)/$1 push $(DRY)
+endef
+push: $(git.items:%=%/push)
+.PHONY: push
+
+$(foreach cmd, pull? push, $(foreach item, $(git.items), $(eval $(call git.$(cmd),$(item)))))
+
+define core.sshCommand
+config.$1.configs.$0 := ssh -i ~/.ssh/$(config.$1.key) -F /dev/null
+config.$1.configs.items += $0
+endef
+
+. := $(foreach config, $(config.items), $(eval $(call core.sshCommand,$(config))))
+
+define config
+$1_$2.dep  = test -d $(ext)/$1 &&
+$1_$2.dep += git -C $(ext)/$1 config --local $2 > /dev/null || echo $1_$2/do_conf
+$1_$2.cmd  = git -C $(ext)/$1 config --add $2 "$(config.$(git.$1.conf).configs.$2)"
+$1_$2/conf: $$(shell $$($1_$2.dep))
+$1_$2/do_conf:; $$($1_$2.cmd)
+$1_conf += $1_$2/conf
+.PHONY: $1_$2/conf $1_$2/do_conf
+endef
+
+. := $(foreach repo, $(git.items), \
+	$(foreach conf, \
+		$(config.$(git.$(repo).conf).configs.items), \
+		$(eval $(call config,$(repo),$(conf)))))
+
+. := $(foreach repo, $(git.items), $(eval $(repo)/conf: $(repo)/clone $($(repo)_conf)))
+
+conf := $(git.items:%=%/conf)
+conf: $(conf)
+.PHONY: conf $(conf)
+
+define mailmap.line
+$1 <$(alias.$1.email)> $(alias.$1.full)
+endef
+
+. := $(foreach alias, $(alias.items), $(call lineinfile,$(call mailmap.line,$(alias)),$(mailmap)))
+
+mailmap: $(mailmap)
+.PHONY: mailmap
+
+$(foreach repo, $(git.items), $(call lineinfile,$(mailmap),$(ext)/$(repo)/.git/info/exclude))
+
+mailmaps := $(git.items:%=$(ext)/%/$(mailmap))
+$(mailmaps): $(mailmap); cp -p $< $@
+mailmaps: conf $(mailmaps) $(git.items:%=$(ext)/%/.git/info/exclude)
+.PHONY: mailmaps
+
+exclude: $(git.exclude)
+
+clean:; rm $(out).js
+.PHONY: clean
+
+clobber:; rm -r $(tmp) $(ext) $(mailmap)
+
+hub.config = github.com: [ { user: $1, oauth_token: $(shell pass $(hub.$1.token)), protocol: https } ]
+hub = $(tmp)/$1.hub:; @echo '$(call hub.config,$1)' > $$@
+$(foreach _, $(hub.items), $(eval $(call hub,$_)))
+hubs := $(hub.items:%=$(tmp)/%.hub)
+hub: $(hubs); @$(foreach _, $(hub.items), echo env HUB_CONFIG=$(tmp)/$_.hub;)
+.PHONY: hub
+
+~ := self/create self/delete
+$~: quote = $(subst ",\\\",$1)#"
+$~: hub := env HUB_CONFIG=$(tmp)/$(self.env).hub hub
+$~: desc := $(and $(self.desc),-d \"$(call quote,$(self.desc))\")
+$~: create := $(hub) create $(and $(self.private),-p) $(desc)
+$~: delete := $(hub) delete $(self.name)
+$~:; @echo $(strip $($(@F)))
+
+self/remote: $(if $(filter $(shell git remote | ifne git remote get-url origin),$(self.remote)),,self/do_remote)
+self/do_remote:; git remote set-url origin $(self.remote)
+
+define self_config
+$0_$1.dep += git config --local $1 > /dev/null || echo $0_$1/do_conf
+$0_$1.cmd  = git config --add $1 "$(config.$(self.env).configs.$1)"
+$0_$1/conf: $$(shell $$($0_$1.dep))
+$0_$1/do_conf:; $$($0_$1.cmd)
+$0_conf += $0_$1/conf
+.PHONY: $0_$1/conf $0_$1/do_conf
+endef
+
+$(foreach _,$(config.$(self.env).configs.items),$(eval $(call self_config,$_)))
+self/config: $(self_config_conf)
