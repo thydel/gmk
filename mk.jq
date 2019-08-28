@@ -1,7 +1,7 @@
 def typedList2object: reduce .[] as $_ ({}; .[$_.type][$_.name] += $_);
 def SingletypedList2object: reduce .[] as $_ ({}; .[$_.type] += $_);
-def addItems: if type == "object" and (has("type") | not) then . += { items: keys | join(" ") } end;
-def remType: if type == "object" then del(.type) | del(.name) end;
+def addItems: if type == "object" and (has("type") | not) then . += { items: keys | join(" ") } else . end;
+def remType: if type == "object" then del(.type) | del(.name) else . end;
 def mkVars: paths(scalars) as $_ | ($_  | join(".")) + " := " + getpath($_);
 
 (map(select(.type == "self")) | SingletypedList2object | mkVars),
