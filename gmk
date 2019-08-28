@@ -85,7 +85,7 @@ endif
 $(out).mk: $(jqs.jq)
 $(out).mk: $(out).js; < $< jq -f $(types.jq) | jq -f $(default.jq) | jq -f $(mk.jq) -r > $@
 
-init: hub;
+init: hub mailmap;
 .PHONY: init
 
 main:; @echo $(if $(filter undefined, $(origin git.items)),no git items,$(git.items))
