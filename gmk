@@ -85,7 +85,7 @@ endif
 $(out).mk: $(jqs.jq)
 $(out).mk: $(out).js; < $< jq -f $(types.jq) | jq -f $(default.jq) | jq -f $(mk.jq) -r > $@
 
-init: hub mailmap;
+init: hub mailmap exclude;
 .PHONY: init
 
 main:; @echo $(if $(filter undefined, $(origin git.items)),no git items,$(git.items))
@@ -114,7 +114,7 @@ $1: $(git.items:%=%/$1)
 .PHONY: $1
 endef
 
-git.cmds := status fetch pull
+git.cmds := status st fetch pull
 $(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
 
 define git.pull?
