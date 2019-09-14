@@ -13,7 +13,7 @@ make -C gmk -f gmk install
 # Fill gmk/.git/info/exclude
 
 ```
-proot -w gmk gmk exclude 
+gmk -C gmk exclude
 ```
 
 # Example use
