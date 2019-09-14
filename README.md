@@ -1,3 +1,9 @@
+# Some random deps
+
+```
+aptitude install moreutils
+```
+
 # Fetch
 
 ```
