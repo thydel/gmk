@@ -16,6 +16,12 @@ make -C gmk -f gmk install
 gmk -C gmk exclude
 ```
 
+# Set up local git config
+
+```
+gmk -C gmk self/config
+```
+
 # Example use
 
 See [gmk-inventories][]
