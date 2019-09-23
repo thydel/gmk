@@ -15,7 +15,7 @@ id := gmk
 tmp := .$(id)
 ext ?= ext
 self := $(lastword $(MAKEFILE_LIST))
-file ?= $(id)
+file ?= $(or $(and $(wildcard $(id)-$(USER).yml), $(id)-$(USER)), $(and $(wildcard $(id).yml), $(id)), $(error no $(id) file))
 
 adam := $(tmp)/.adam
 ultimo := /proc/self
