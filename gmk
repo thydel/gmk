@@ -115,6 +115,7 @@ $1: $(git.items:%=%/$1)
 endef
 
 git.cmds := status st fetch pull
+$(foreach _,$(git.cmds),$(eval $_ :=))
 status := -s
 $(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
 
