@@ -109,12 +109,13 @@ clone: $(gitdirs)
 .PHONY: clone 
 
 define git.cmd
-$(git.items:%=%/$1): %/$1: %/conf; git -C $(ext)/$$* $$(@F)
+$(git.items:%=%/$1): %/$1: %/conf; git -C $(ext)/$$* $$(@F) $$($$(@F))
 $1: $(git.items:%=%/$1)
 .PHONY: $1
 endef
 
 git.cmds := status st fetch pull
+status := -s
 $(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
 
 define git.pull?
