@@ -134,7 +134,14 @@ endef
 push: $(git.items:%=%/push)
 .PHONY: push
 
-$(foreach cmd, pull? push, $(foreach item, $(git.items), $(eval $(call git.$(cmd),$(item)))))
+define git.branch
+$1/branch: $1/conf; @echo $1 $(git.$1.version) $$$$(git -C $(ext)/$1 rev-parse --abbrev-ref HEAD)
+endef
+branch.header:; @echo name gmk git
+branch: branch.header $(git.items:%=%/branch)
+.PHONY: branch
+
+$(foreach cmd, pull? push branch, $(foreach item, $(git.items), $(eval $(call git.$(cmd),$(item)))))
 
 define core.sshCommand
 config.$1.configs.$0 := ssh -i ~/.ssh/$(config.$1.key) -F /dev/null
