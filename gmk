@@ -2,7 +2,7 @@
 
 MAKEFLAGS += -Rr --warn-undefined-variables
 SHELL != which bash
-.DEFAULT_GOAL :=  main
+.DEFAULT_GOAL := help
 
 .DELETE_ON_ERROR:
 
@@ -38,7 +38,8 @@ $(foreach _,$(excluded),$(call lineinfile,$_,$(git.exclude)))
 
 . := $(or $(wildcard $(file).yml),$(error no $(file).yml))
 
--include $(tmp)/$(file).mk
+out := $(tmp)/$(file)
+-include $(out).mk
 
 yml2js.py := import sys, yaml, json;
 yml2js.py += json.dump(yaml.load(sys.stdin), sys.stdout, indent=2, default=str, sort_keys=True)
@@ -46,8 +47,6 @@ yml2js.py += json.dump(yaml.load(sys.stdin), sys.stdout, indent=2, default=str, 
 yml2js := python -c '$(yml2js.py)'
 
 $(file).yml types.jq config.jq git.jq:;
-
-out := $(tmp)/$(file)
 
 $(out).js: $(file).yml $(self); @ < $< $(yml2js) > $@
 
@@ -82,14 +81,21 @@ install: $(lib.installed)/.stone $(files);
 .PHONY: install
 endif
 
+help :=
+help.loop :=
+help.self :=
+
+install.help := install gmk (invoked as "./gmk" from itself)
+help += install
+
 $(out).mk: $(jqs.jq)
 $(out).mk: $(out).js; < $< jq -f $(types.jq) | jq -f $(default.jq) | jq -f $(mk.jq) -r > $@
 
-init: hub mailmap exclude;
+init := hub mailmap exclude
+init: $(init);
 .PHONY: init
-
-main:; @echo $(if $(filter undefined, $(origin git.items)),no git items,$(git.items))
-.PHONY: main
+init.help := gmk $(init)
+help += init
 
 gitkey = $(config.$(git.$1.conf).key)
 
@@ -106,7 +112,10 @@ gitdirs := $(git.items:%=$(ext)/%)
 $(gitdirs): ssh = GIT_SSH_COMMAND='ssh -i ~/.ssh/$(call gitkey,$(@F))'
 $(gitdirs):; $(ssh) git clone -b $(git.$(@F).version) $(git.$(@F).git) $(ext)/$(@F)
 clone: $(gitdirs)
-.PHONY: clone 
+.PHONY: clone
+clone.help := git clone using gmk data for key, branch and name
+help += clone
+help.loop += clone
 
 define git.cmd
 $(git.items:%=%/$1): %/$1: %/conf; git -C $(ext)/$$* $$(@F) $$($$(@F))
@@ -119,12 +128,21 @@ $(foreach _,$(git.cmds),$(eval $_ :=))
 status := -s
 $(foreach cmd, $(git.cmds), $(eval $(call git.cmd,$(cmd))))
 
+status.help := git status -s
+st.help := git status if st is an alias for status
+$(foreach _,fetch pull,$(eval $_.help := git $_))
+help += $(git.cmds)
+help.loop += $(git.cmds)
+
 define git.pull?
 $1/pull?: $1/conf $(shell test -d $(ext)/$1 && git -C $(ext)/$1 log -1 HEAD..@{upstream} | ifne echo $1/do_pull)
 $1/do_pull:; git -C $(ext)/$1 pull
 endef
 pull?: $(git.items:%=%/pull?)
 .PHONY: pull?
+pull?.help := git pull with test
+help += pull?
+help.loop += pull?
 
 DRY ?= -n
 define git.push
@@ -133,6 +151,11 @@ $1/do_push:; git -C $(ext)/$1 push $(DRY)
 endef
 push: $(git.items:%=%/push)
 .PHONY: push
+push.help := git pull with test\n
+push.help += default to dry mode\n
+push.help += use "gmk push DRY=" to undry
+help += push
+help.loop += push
 
 define git.branch
 $1/branch: $1/conf; @echo $1 $(git.$1.version) $$$$(git -C $(ext)/$1 rev-parse --abbrev-ref HEAD)
@@ -140,6 +163,9 @@ endef
 branch.header:; @echo name gmk git
 branch: branch.header $(git.items:%=%/branch)
 .PHONY: branch
+branch.help := show gmk declared branch and actual used branch\n
+branch.help += use "gmk branch | column -t" to tabulate output
+help += branch
 
 $(foreach cmd, pull? push branch, $(foreach item, $(git.items), $(eval $(call git.$(cmd),$(item)))))
 
@@ -170,6 +196,9 @@ endef
 conf := $(git.items:%=%/conf)
 conf: $(conf)
 .PHONY: conf $(conf)
+conf.help := git config using gmk data
+help += conf
+help.loop += conf
 
 define mailmap.line
 $1 <$(alias.$1.email)> $(alias.$1.full)
@@ -179,6 +208,8 @@ endef
 
 mailmap: $(mailmap)
 .PHONY: mailmap
+mailmap.help := generate mailmap for this repo
+help += mailmap
 
 $(foreach repo, $(git.items), $(call lineinfile,$(mailmap),$(ext)/$(repo)/.git/info/exclude))
 
@@ -186,13 +217,24 @@ mailmaps := $(git.items:%=$(ext)/%/$(mailmap))
 $(mailmaps): $(mailmap); cp -p $< $@
 mailmaps: conf $(mailmaps) $(git.items:%=$(ext)/%/.git/info/exclude)
 .PHONY: mailmaps
+mailmaps.help := generate mailmap for gmk items
+help += mailmaps
+help.loop += mailmaps
 
 exclude: $(git.exclude)
+.PHONY: exclude
+exclude.help := lininfile ".git/info/exclude" for gmk
+help += exclude
 
 clean:; rm $(out).js
 .PHONY: clean
+clean.help := remove generated gmk json files
+help += clean
 
 clobber:; rm -r $(tmp) $(ext) $(mailmap)
+.PHONY: clobber
+clobber.help := remove all generated files
+help += clobber
 
 hub.config = github.com: [ { user: $1, oauth_token: $(shell pass $(hub.$1.token)), protocol: https } ]
 hub = $(tmp)/$1.hub:; @echo '$(call hub.config,$1)' > $$@
@@ -200,18 +242,30 @@ $(foreach _, $(hub.items), $(eval $(call hub,$_)))
 hubs := $(hub.items:%=$(tmp)/%.hub)
 hub: $(hubs); @$(foreach _, $(hub.items), echo env HUB_CONFIG=$(tmp)/$_.hub;)
 .PHONY: hub
+help.hub := show env prefix line defining HUB_CONFIG for all gmk hub items
+help += hub
 
 ~ := self/create self/delete
 $~: quote = $(subst ",\\\",$1)#"
 $~: hub := env HUB_CONFIG=$(tmp)/$(self.env).hub hub
-$~: desc := $(and $(self.desc),-d \"$(call quote,$(self.desc))\")
+$~: desc := $(and $(self.desc),-d \"'$(call quote,$(self.desc))'\")
 $~: name := $(and $(self.organization), $(self.organization)/$(self.name))
 $~: create := $(hub) create $(and $(self.private),-p) $(desc) $(name)
 $~: delete := $(hub) delete $(self.name)
 $~:; @echo $(strip $($(@F)))
+.PHONY: $~
+$(foreach _,create delete,$(eval self/$_.help := show hub line to self $_ on github))
+help += $~
+help.self += $~
 
+ifdef self.remote
 self/remote: $(if $(filter $(shell git remote | ifne git remote get-url origin),$(self.remote)),,self/do_remote)
 self/do_remote:; git remote set-url origin $(self.remote)
+.PHONY: self/remote self/do_remote
+endif
+self/remote.help := git remote set-url if self.remote is define
+help += self/remote
+help.self += self/remote
 
 define self_config
 $0_$1.dep += git config --local $1 > /dev/null || echo $0_$1/do_conf
@@ -224,3 +278,30 @@ endef
 
 $(foreach _,$(config.$(self.env).configs.items),$(eval $(call self_config,$_)))
 self/config: $(self_config_conf)
+.PHONY: self/config
+self/config.help := git config using gmk data for this repo
+help += self/config
+help.self += self/config
+
+types := git config hub alias
+items = echo $1 items: $(if $(filter undefined, $(origin $1.items)),no $1 items,$($1.items));
+data :=
+$(foreach _,$(types),$(eval data += $(call items,$_)))
+
+$(foreach _,$(help),$(eval help/$_:; @echo $$$$'$($_.help)'))
+
+help.simple := $(filter-out $(help.loop) $(help.self), $(help))
+
+help.help.help := \ngmk help $$target\n
+help.simple.help := simple targets: $(help.simple)\n
+help.simple.help += targets without parameter\n
+help.loop.help := loop targets: $(help.loop)\n
+help.loop.help += targets which loop over all git items\n
+help.loop.help += invoke as $$git_item/$$target to use on one item only\n
+help.self.help := self targets: $(help.self)\n
+help.self.help += targets for this git\n
+
+help.cmd := $(foreach _, help simple loop self,echo $$'$(help.$_.help)';)
+help.cmd += echo $$'this gmk data\n'; $(data)
+help:; @$(help.cmd)
+.PHONY: help
