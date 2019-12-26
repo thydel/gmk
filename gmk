@@ -231,7 +231,7 @@ clean:; rm $(out).js
 clean.help := remove generated gmk json files
 help += clean
 
-clobber:; rm -r $(tmp) $(ext) $(mailmap)
+clobber:; rm -rf $(tmp) $(ext) $(mailmap)
 .PHONY: clobber
 clobber.help := remove all generated files
 help += clobber
