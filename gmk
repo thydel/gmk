@@ -236,7 +236,7 @@ clobber:; rm -rf $(tmp) $(ext) $(mailmap)
 clobber.help := remove all generated files
 help += clobber
 
-hub.config = github.com: [ { user: $1, oauth_token: $(shell pass $(hub.$1.token)), protocol: https } ]
+hub.config = github.com: [ { user: $1, oauth_token: $(shell pass $(hub.$1.token) | head -1), protocol: https } ]
 hub = $(tmp)/$1.hub:; @echo '$(call hub.config,$1)' > $$@
 $(foreach _, $(hub.items), $(eval $(call hub,$_)))
 hubs := $(hub.items:%=$(tmp)/%.hub)
