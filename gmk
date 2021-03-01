@@ -42,7 +42,7 @@ out := $(tmp)/$(file)
 -include $(out).mk
 
 yml2js.py := import sys, yaml, json;
-yml2js.py += json.dump(yaml.load(sys.stdin), sys.stdout, indent=2, default=str, sort_keys=True)
+yml2js.py += json.dump(yaml.load(sys.stdin, Loader=yaml.FullLoader), sys.stdout, indent=2, default=str, sort_keys=True)
 
 yml2js := python -c '$(yml2js.py)'
 
